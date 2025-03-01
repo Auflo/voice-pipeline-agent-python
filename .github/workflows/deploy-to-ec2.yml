@@ -86,10 +86,10 @@ jobs:
             # Stop any existing application instance
             pkill -f "python3 agent.py dev" || true
             
-            # Set up fresh Python environment
-            python3 -m venv venv
-            source venv/bin/activate
-            pip install -r requirements.txt
+            python3 -m venv ${APP_PATH}/venv
+            ${APP_PATH}/venv/bin/pip install --upgrade pip
+            ${APP_PATH}/venv/bin/pip install -r requirements.txt
+            ${APP_PATH}/venv/bin/pip install python-dotenv
             
             # Start application
             python3 agent.py download-files
