@@ -60,7 +60,7 @@ jobs:
           fi
           
           # Prepare SSH access
-          echo "$EC2_SSH_KEY" > auflo-keypair.pem
+          echo "$EC2_SSH_KEY" | base64 -d > auflo-keypair.pem
           chmod 600 auflo-keypair.pem
           
           # Copy files directly to server
