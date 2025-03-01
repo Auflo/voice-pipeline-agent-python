@@ -127,24 +127,7 @@ jobs:
               echo '❌ PID file not found'; \
             fi"
       
-      # Step 7: Post deployment status as comment (if running from PR/issue)
-      - name: Notify deployment status
-        if: success()
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { repo, owner } = context.repo;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner,
-              repo,
-              body: `✅ Successfully deployed to ${process.env.ENVIRONMENT} environment`
-            })
-        env:
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
-
-      # Step 8: Clean up sensitive files (moved to end)
+      # Step 7: Clean up sensitive files
       - name: Cleanup
         if: always()  # Run even if previous steps failed
         run: |
