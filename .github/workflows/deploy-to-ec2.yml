@@ -60,14 +60,14 @@ jobs:
           fi
           
           # Prepare SSH access
-          echo "$EC2_SSH_KEY" > private_key.pem
-          chmod 600 private_key.pem
+          echo "$EC2_SSH_KEY" > auflo-keypair.pem
+          chmod 600 auflo-keypair.pem
           
           # Copy files directly to server
-          scp -i private_key.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
+          scp -i auflo-keypair.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
           
           # Execute deployment commands on server
-          ssh -i private_key.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << EOF
+          ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << EOF
             cd ${APP_PATH}
             
             # Create .env.local file
@@ -100,7 +100,7 @@ jobs:
       - name: Cleanup
         if: always()  # Run even if previous steps failed
         run: |
-          rm -f private_key.pem
+          rm -f auflo-keypair.pem
       
       # Step 6: Verify the deployment was successful
       - name: Verify deployment
@@ -123,7 +123,7 @@ jobs:
           sleep 5
           
           # Check process status
-          ssh -i private_key.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} \
+          ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} \
             "if [ -f ${APP_PATH}/agent.pid ]; then \
               ps -p \$(cat ${APP_PATH}/agent.pid) > /dev/null && \
               echo '✅ Agent is running' || \
