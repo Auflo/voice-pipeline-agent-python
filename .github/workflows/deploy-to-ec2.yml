@@ -64,6 +64,7 @@ jobs:
           chmod 600 auflo-keypair.pem
           
           # Copy files directly to server
+          ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} "sudo mkdir -p ${APP_PATH} && sudo chown ${EC2_USERNAME}:${EC2_USERNAME} ${APP_PATH}"
           scp -i auflo-keypair.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
           
           # Execute deployment commands on server
