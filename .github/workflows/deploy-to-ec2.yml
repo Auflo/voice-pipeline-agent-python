@@ -73,12 +73,12 @@ jobs:
             
             # Create .env.local file
             cat > .env.local << 'ENDENV'
-LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
-LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
-LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
-OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-ENDENV
+            LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
+            LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
+            LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+            ENDENV
             
             # Stop any existing application instance
             pkill -f "python3 agent.py dev" || true
