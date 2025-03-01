@@ -67,18 +67,21 @@ jobs:
           ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} "sudo mkdir -p ${APP_PATH} && sudo chown ${EC2_USERNAME}:${EC2_USERNAME} ${APP_PATH}"
           scp -i auflo-keypair.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
           
+          # Create .env.local file locally
+          cat > env.local << 'ENDENV'
+          LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
+          LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
+          LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+          ENDENV
+          
+          # Upload the env file to server
+          scp -i auflo-keypair.pem -o StrictHostKeyChecking=no env.local ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/.env.local
+          
           # Execute deployment commands on server
           ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << EOF
             cd ${APP_PATH}
-            
-            # Create .env.local file
-            cat > .env.local << 'ENDENV'
-            LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
-            LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
-            LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-            ENDENV
             
             # Stop any existing application instance
             pkill -f "python3 agent.py dev" || true
@@ -93,8 +96,8 @@ jobs:
             nohup python3 agent.py dev > agent.log 2>&1 &
             
             # Save PID for monitoring
-            echo $! > agent.pid
-            echo "Deployment completed at $(date)"
+            echo \$! > agent.pid
+            echo "Deployment completed at \$(date)"
           EOF
       
       # Step 6: Verify the deployment was successful
@@ -132,3 +135,4 @@ jobs:
         if: always()  # Run even if previous steps failed
         run: |
           rm -f auflo-keypair.pem
+          rm -f env.local
