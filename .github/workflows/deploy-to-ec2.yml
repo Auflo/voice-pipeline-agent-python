@@ -97,12 +97,6 @@ jobs:
             echo "Deployment completed at $(date)"
           EOF
       
-      # Step 5: Clean up sensitive files
-      - name: Cleanup
-        if: always()  # Run even if previous steps failed
-        run: |
-          rm -f auflo-keypair.pem
-      
       # Step 6: Verify the deployment was successful
       - name: Verify deployment
         env:
@@ -149,3 +143,9 @@ jobs:
             })
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
+
+      # Step 8: Clean up sensitive files (moved to end)
+      - name: Cleanup
+        if: always()  # Run even if previous steps failed
+        run: |
+          rm -f auflo-keypair.pem
