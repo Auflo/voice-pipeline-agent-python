@@ -1,0 +1,141 @@
+name: Deploy Agent App to EC2
+
+on:
+  workflow_dispatch:  # Manual trigger with custom inputs
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      ec2_instance:  # Optional specific EC2 instance to deploy to
+        description: 'EC2 instance ID (optional)'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Get the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # Step 2: Set up AWS credentials for EC2 access
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      # Step 3: Verify requirements.txt exists
+      - name: Verify requirements.txt
+        run: |
+          if [ ! -f requirements.txt ]; then
+            echo "⚠️ requirements.txt not found"
+            exit 1
+          fi
+      
+      # Step 4: Main deployment step
+      - name: Deploy to EC2
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_HOST: ${{ secrets.EC2_HOST_STAGING }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+        run: |
+          # Choose between staging/production host
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            EC2_HOST="${{ secrets.EC2_HOST_PRODUCTION }}"
+          fi
+          
+          # Allow deploying to specific instance if provided
+          if [ ! -z "${{ github.event.inputs.ec2_instance }}" ]; then
+            EC2_HOST=$(aws ec2 describe-instances --instance-ids ${{ github.event.inputs.ec2_instance }} --query "Reservations[0].Instances[0].PublicDnsName" --output text)
+          fi
+          
+          # Prepare SSH access
+          echo "$EC2_SSH_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          
+          # Copy files directly to server
+          scp -i private_key.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
+          
+          # Execute deployment commands on server
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << EOF
+            cd ${APP_PATH}
+            
+            # Stop any existing application instance
+            pkill -f "python3 agent.py dev" || true
+            
+            # Set up fresh Python environment
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+            
+            # Start application
+            python3 agent.py download-files
+            nohup python3 agent.py dev > agent.log 2>&1 &
+            
+            # Save PID for monitoring
+            echo $! > agent.pid
+            echo "Deployment completed at $(date)"
+          EOF
+      
+      # Step 5: Clean up sensitive files
+      - name: Cleanup
+        if: always()  # Run even if previous steps failed
+        run: |
+          rm -f private_key.pem
+      
+      # Step 6: Verify the deployment was successful
+      - name: Verify deployment
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_HOST: ${{ secrets.EC2_HOST_STAGING }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+        run: |
+          # Set correct host
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            EC2_HOST="${{ secrets.EC2_HOST_PRODUCTION }}"
+          fi
+          
+          if [ ! -z "${{ github.event.inputs.ec2_instance }}" ]; then
+            EC2_HOST=$(aws ec2 describe-instances --instance-ids ${{ github.event.inputs.ec2_instance }} --query "Reservations[0].Instances[0].PublicDnsName" --output text)
+          fi
+          
+          echo "Verifying deployment..."
+          sleep 5
+          
+          # Check process status
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} \
+            "if [ -f ${APP_PATH}/agent.pid ]; then \
+              ps -p \$(cat ${APP_PATH}/agent.pid) > /dev/null && \
+              echo '✅ Agent is running' || \
+              echo '❌ Agent process not found'; \
+            else \
+              echo '❌ PID file not found'; \
+            fi"
+      
+      # Step 7: Post deployment status as comment (if running from PR/issue)
+      - name: Notify deployment status
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { repo, owner } = context.repo;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner,
+              repo,
+              body: `✅ Successfully deployed to ${process.env.ENVIRONMENT} environment`
+            })
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
