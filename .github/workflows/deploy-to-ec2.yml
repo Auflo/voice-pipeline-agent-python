@@ -68,17 +68,18 @@ jobs:
           scp -i auflo-keypair.pem -o StrictHostKeyChecking=no agent.py requirements.txt ${EC2_USERNAME}@${EC2_HOST}:${APP_PATH}/
           
           # Execute deployment commands on server
-          ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << EOF
+          ssh -i auflo-keypair.pem -o StrictHostKeyChecking=no ${EC2_USERNAME}@${EC2_HOST} << 'EOF'
             cd ${APP_PATH}
             
             # Create .env.local file
-            cat > .env.local << 'ENVFILE'ds
-            LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
-            LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
-            LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
-            ENVFILE
+            cat << 'ENVFILE' > .env.local
+LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
+LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
+LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
+OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+CARTESIA_API_KEY=${{ secrets.CARTESIA_API_KEY }}
+ENVFILE
             
             # Stop any existing application instance
             pkill -f "python3 agent.py dev" || true
@@ -95,7 +96,7 @@ jobs:
             # Save PID for monitoring
             echo $! > agent.pid
             echo "Deployment completed at $(date)"
-          EOF
+EOF
       
       # Step 6: Verify the deployment was successful
       - name: Verify deployment
