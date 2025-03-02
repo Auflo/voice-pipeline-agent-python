@@ -74,6 +74,8 @@ jobs:
           LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+          ELEVEN_API_KEY=${{ secrets.ELEVEN_API_KEY }}
+          ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}
           ENDENV
           
           # Upload the env file to server
